@@ -1,0 +1,605 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model carrito {
+  id_carrito          Int            @id @default(autoincrement()) @db.UnsignedInt
+  id_usuario          Int            @db.UnsignedInt
+  estado              carrito_estado @default(activo)
+  fecha_creacion      DateTime       @default(now()) @db.DateTime(0)
+  fecha_actualizacion DateTime       @default(now()) @db.DateTime(0)
+  usuario             usuario        @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: Restrict, map: "fk_carrito_usuario")
+  item_carrito        item_carrito[]
+
+  @@index([id_usuario], map: "fk_carrito_usuario")
+}
+
+model categoria {
+  id_categoria       Int         @id @default(autoincrement()) @db.UnsignedInt
+  id_categoria_padre Int?        @db.UnsignedInt
+  nombre             String      @db.VarChar(100)
+  descripcion        String?     @db.VarChar(255)
+  imagen             String?     @db.VarChar(255)
+  activa             Boolean     @default(true)
+  categoria          categoria?  @relation("categoriaTocategoria", fields: [id_categoria_padre], references: [id_categoria], onDelete: Restrict, onUpdate: Restrict, map: "fk_categoria_padre")
+  other_categoria    categoria[] @relation("categoriaTocategoria")
+  producto           producto[]
+
+  @@index([id_categoria_padre], map: "fk_categoria_padre")
+}
+
+model cupon {
+  id_cupon            Int                  @id @default(autoincrement()) @db.UnsignedInt
+  codigo              String               @unique(map: "uq_cupon_codigo") @db.VarChar(30)
+  descripcion         String?              @db.VarChar(255)
+  tipo_descuento      cupon_tipo_descuento
+  valor_descuento     Decimal              @db.Decimal(12, 2)
+  monto_minimo_compra Decimal              @default(0.00) @db.Decimal(12, 2)
+  fecha_inicio        DateTime             @db.DateTime(0)
+  fecha_fin           DateTime             @db.DateTime(0)
+  usos_maximos        Int?                 @db.UnsignedInt
+  usos_actuales       Int                  @default(0) @db.UnsignedInt
+  activo              Boolean              @default(true)
+  pedido              pedido[]
+}
+
+model detalle_orden_compra {
+  id_detalle_oc       Int                 @id @default(autoincrement()) @db.UnsignedInt
+  id_orden_compra     Int                 @db.UnsignedInt
+  id_producto         Int                 @db.UnsignedInt
+  cantidad_solicitada Int                 @db.UnsignedInt
+  cantidad_recibida   Int                 @default(0) @db.UnsignedInt
+  costo_unitario      Decimal             @db.Decimal(12, 2)
+  iva                 Decimal             @default(0.00) @db.Decimal(12, 2)
+  subtotal            Decimal             @db.Decimal(12, 2)
+  orden_compra        orden_compra        @relation(fields: [id_orden_compra], references: [id_orden_compra], onDelete: Cascade, onUpdate: Restrict, map: "fk_doc_orden")
+  producto            producto            @relation(fields: [id_producto], references: [id_producto], onUpdate: Restrict, map: "fk_doc_producto")
+  detalle_recepcion   detalle_recepcion[]
+
+  @@unique([id_orden_compra, id_producto], map: "uq_doc_orden_producto")
+  @@index([id_producto], map: "fk_doc_producto")
+}
+
+model detalle_pedido {
+  id_detalle      Int          @id @default(autoincrement()) @db.UnsignedInt
+  id_pedido       Int          @db.UnsignedInt
+  id_producto     Int          @db.UnsignedInt
+  cantidad        Int          @db.UnsignedInt
+  precio_unitario Decimal      @db.Decimal(12, 2)
+  descuento       Decimal      @default(0.00) @db.Decimal(12, 2)
+  iva             Decimal      @default(0.00) @db.Decimal(12, 2)
+  subtotal        Decimal      @db.Decimal(12, 2)
+  pedido          pedido       @relation(fields: [id_pedido], references: [id_pedido], onDelete: Cascade, onUpdate: Restrict, map: "fk_detalle_pedido")
+  producto        producto     @relation(fields: [id_producto], references: [id_producto], onUpdate: Restrict, map: "fk_detalle_producto")
+  devolucion      devolucion[]
+
+  @@index([id_pedido], map: "fk_detalle_pedido")
+  @@index([id_producto], map: "fk_detalle_producto")
+}
+
+model detalle_recepcion {
+  id_detalle_recepcion Int                  @id @default(autoincrement()) @db.UnsignedInt
+  id_recepcion         Int                  @db.UnsignedInt
+  id_detalle_oc        Int                  @db.UnsignedInt
+  cantidad_recibida    Int                  @default(0) @db.UnsignedInt
+  cantidad_rechazada   Int                  @default(0) @db.UnsignedInt
+  observaciones        String?              @db.VarChar(255)
+  detalle_orden_compra detalle_orden_compra @relation(fields: [id_detalle_oc], references: [id_detalle_oc], onUpdate: Restrict, map: "fk_dr_detalle")
+  recepcion_compra     recepcion_compra     @relation(fields: [id_recepcion], references: [id_recepcion], onDelete: Cascade, onUpdate: Restrict, map: "fk_dr_recepcion")
+
+  @@unique([id_recepcion, id_detalle_oc], map: "uq_dr_recepcion_detalle")
+  @@index([id_detalle_oc], map: "fk_dr_detalle")
+}
+
+model devolucion {
+  id_devolucion    Int               @id @default(autoincrement()) @db.UnsignedInt
+  id_detalle       Int               @db.UnsignedInt
+  motivo           String            @db.VarChar(255)
+  descripcion      String?           @db.Text
+  cantidad         Int               @default(1) @db.UnsignedInt
+  estado           devolucion_estado @default(solicitada)
+  monto_reembolso  Decimal?          @db.Decimal(12, 2)
+  fecha_solicitud  DateTime          @default(now()) @db.DateTime(0)
+  fecha_resolucion DateTime?         @db.DateTime(0)
+  detalle_pedido   detalle_pedido    @relation(fields: [id_detalle], references: [id_detalle], onUpdate: Restrict, map: "fk_devolucion_detalle")
+
+  @@index([id_detalle], map: "fk_devolucion_detalle")
+}
+
+model direccion {
+  id_direccion                                      Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_usuario                                        Int      @db.UnsignedInt
+  alias                                             String?  @db.VarChar(50)
+  destinatario                                      String   @db.VarChar(150)
+  telefono_contacto                                 String?  @db.VarChar(20)
+  calle_principal                                   String   @db.VarChar(150)
+  calle_secundaria                                  String?  @db.VarChar(150)
+  numeracion                                        String?  @db.VarChar(20)
+  referencia                                        String?  @db.VarChar(255)
+  ciudad                                            String   @db.VarChar(100)
+  provincia                                         String   @db.VarChar(100)
+  pais                                              String   @default("Ecuador") @db.VarChar(100)
+  codigo_postal                                     String?  @db.VarChar(20)
+  es_predeterminada                                 Boolean  @default(false)
+  usuario                                           usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: Restrict, map: "fk_direccion_usuario")
+  pedido_pedido_id_direccion_envioTodireccion       pedido[] @relation("pedido_id_direccion_envioTodireccion")
+  pedido_pedido_id_direccion_facturacionTodireccion pedido[] @relation("pedido_id_direccion_facturacionTodireccion")
+
+  @@index([id_usuario], map: "fk_direccion_usuario")
+}
+
+model envio {
+  id_envio               Int           @id @default(autoincrement()) @db.UnsignedInt
+  id_pedido              Int           @db.UnsignedInt
+  id_metodo_envio        Int           @db.UnsignedInt
+  id_transportista       Int           @db.UnsignedInt
+  numero_guia            String?       @db.VarChar(50)
+  estado                 envio_estado  @default(preparando)
+  costo                  Decimal       @default(0.00) @db.Decimal(12, 2)
+  fecha_despacho         DateTime?     @db.DateTime(0)
+  fecha_entrega_estimada DateTime?     @db.Date
+  fecha_entrega          DateTime?     @db.DateTime(0)
+  metodo_envio           metodo_envio  @relation(fields: [id_metodo_envio], references: [id_metodo_envio], onUpdate: Restrict, map: "fk_envio_metodo")
+  pedido                 pedido        @relation(fields: [id_pedido], references: [id_pedido], onUpdate: Restrict, map: "fk_envio_pedido")
+  transportista          transportista @relation(fields: [id_transportista], references: [id_transportista], onUpdate: Restrict, map: "fk_envio_transportista")
+
+  @@index([id_metodo_envio], map: "fk_envio_metodo")
+  @@index([id_pedido], map: "fk_envio_pedido")
+  @@index([id_transportista], map: "fk_envio_transportista")
+}
+
+model especificacion {
+  id_especificacion Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_producto       Int      @db.UnsignedInt
+  nombre            String   @db.VarChar(100)
+  valor             String   @db.VarChar(255)
+  unidad            String?  @db.VarChar(30)
+  producto          producto @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade, onUpdate: Restrict, map: "fk_especificacion_producto")
+
+  @@index([id_producto], map: "fk_especificacion_producto")
+}
+
+model factura {
+  id_factura             Int            @id @default(autoincrement()) @db.UnsignedInt
+  id_pedido              Int            @unique(map: "uq_factura_pedido") @db.UnsignedInt
+  numero_factura         String         @unique(map: "uq_factura_numero") @db.VarChar(20)
+  clave_acceso           String         @unique(map: "uq_factura_clave") @db.VarChar(49)
+  fecha_emision          DateTime       @default(now()) @db.DateTime(0)
+  identificacion_cliente String         @db.VarChar(20)
+  razon_social_cliente   String         @db.VarChar(200)
+  subtotal               Decimal        @db.Decimal(12, 2)
+  iva                    Decimal        @db.Decimal(12, 2)
+  total                  Decimal        @db.Decimal(12, 2)
+  estado                 factura_estado @default(emitida)
+  pedido                 pedido         @relation(fields: [id_pedido], references: [id_pedido], onUpdate: Restrict, map: "fk_factura_pedido")
+}
+
+model favorito {
+  id_usuario     Int      @db.UnsignedInt
+  id_producto    Int      @db.UnsignedInt
+  fecha_agregado DateTime @default(now()) @db.DateTime(0)
+  producto       producto @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade, onUpdate: Restrict, map: "fk_fav_producto")
+  usuario        usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: Restrict, map: "fk_fav_usuario")
+
+  @@id([id_usuario, id_producto])
+  @@index([id_producto], map: "fk_fav_producto")
+}
+
+model historial_estado_pedido {
+  id_historial Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_pedido    Int      @db.UnsignedInt
+  estado       String   @db.VarChar(30)
+  comentario   String?  @db.VarChar(255)
+  fecha_cambio DateTime @default(now()) @db.DateTime(0)
+  pedido       pedido   @relation(fields: [id_pedido], references: [id_pedido], onDelete: Cascade, onUpdate: Restrict, map: "fk_historial_pedido")
+
+  @@index([id_pedido], map: "fk_historial_pedido")
+}
+
+model imagen_producto {
+  id_imagen         Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_producto       Int      @db.UnsignedInt
+  url               String   @db.VarChar(255)
+  texto_alternativo String?  @db.VarChar(200)
+  orden             Int      @default(0) @db.UnsignedSmallInt
+  es_principal      Boolean  @default(false)
+  producto          producto @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade, onUpdate: Restrict, map: "fk_imagen_producto")
+
+  @@index([id_producto], map: "fk_imagen_producto")
+}
+
+model inventario {
+  id_inventario       Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_producto         Int      @unique(map: "uq_inventario_producto") @db.UnsignedInt
+  stock_actual        Int      @default(0)
+  stock_reservado     Int      @default(0)
+  stock_minimo        Int      @default(0)
+  ubicacion_bodega    String?  @db.VarChar(100)
+  fecha_actualizacion DateTime @default(now()) @db.DateTime(0)
+  producto            producto @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade, onUpdate: Restrict, map: "fk_inventario_producto")
+}
+
+model item_carrito {
+  id_item         Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_carrito      Int      @db.UnsignedInt
+  id_producto     Int      @db.UnsignedInt
+  cantidad        Int      @default(1) @db.UnsignedInt
+  precio_unitario Decimal  @db.Decimal(12, 2)
+  fecha_agregado  DateTime @default(now()) @db.DateTime(0)
+  carrito         carrito  @relation(fields: [id_carrito], references: [id_carrito], onDelete: Cascade, onUpdate: Restrict, map: "fk_item_carrito")
+  producto        producto @relation(fields: [id_producto], references: [id_producto], onUpdate: Restrict, map: "fk_item_producto")
+
+  @@unique([id_carrito, id_producto], map: "uq_item_carrito_producto")
+  @@index([id_producto], map: "fk_item_producto")
+}
+
+model kardex {
+  id_kardex             BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  id_producto           Int                    @db.UnsignedInt
+  id_movimiento         Int?                   @db.UnsignedInt
+  id_usuario            Int                    @db.UnsignedInt
+  fecha_kardex          DateTime               @default(now()) @db.DateTime(0)
+  tipo_documento        kardex_tipo_documento
+  id_documento          Int?                   @db.UnsignedInt
+  detalle               String?                @db.VarChar(255)
+  cantidad              Int
+  costo_unitario        Decimal                @default(0.0000) @db.Decimal(12, 4)
+  costo_total           Decimal                @default(0.00) @db.Decimal(14, 2)
+  saldo_cantidad        Int
+  saldo_costo_promedio  Decimal                @default(0.0000) @db.Decimal(12, 4)
+  saldo_valor           Decimal                @default(0.00) @db.Decimal(14, 2)
+  movimiento_inventario movimiento_inventario? @relation(fields: [id_movimiento], references: [id_movimiento], onDelete: Restrict, onUpdate: Restrict, map: "fk_kardex_movimiento")
+  producto              producto               @relation(fields: [id_producto], references: [id_producto], onUpdate: Restrict, map: "fk_kardex_producto")
+  usuario               usuario                @relation(fields: [id_usuario], references: [id_usuario], onUpdate: Restrict, map: "fk_kardex_usuario")
+
+  @@index([id_movimiento], map: "fk_kardex_movimiento")
+  @@index([id_usuario], map: "fk_kardex_usuario")
+  @@index([tipo_documento, id_documento], map: "idx_kardex_documento")
+  @@index([id_producto, fecha_kardex], map: "idx_kardex_producto_fecha")
+}
+
+model marca {
+  id_marca    Int        @id @default(autoincrement()) @db.UnsignedInt
+  nombre      String     @unique(map: "uq_marca_nombre") @db.VarChar(100)
+  logo        String?    @db.VarChar(255)
+  pais_origen String?    @db.VarChar(100)
+  sitio_web   String?    @db.VarChar(255)
+  producto    producto[]
+}
+
+model metodo_envio {
+  id_metodo_envio Int     @id @default(autoincrement()) @db.UnsignedInt
+  nombre          String  @db.VarChar(100)
+  costo_base      Decimal @default(0.00) @db.Decimal(12, 2)
+  dias_estimados  Int     @default(0) @db.UnsignedSmallInt
+  activo          Boolean @default(true)
+  envio           envio[]
+}
+
+model metodo_pago {
+  id_metodo_pago Int     @id @default(autoincrement()) @db.UnsignedInt
+  nombre         String  @db.VarChar(100)
+  tipo           String  @db.VarChar(50)
+  activo         Boolean @default(true)
+  pago           pago[]
+}
+
+model movimiento_inventario {
+  id_movimiento    Int                        @id @default(autoincrement()) @db.UnsignedInt
+  id_producto      Int                        @db.UnsignedInt
+  id_usuario       Int                        @db.UnsignedInt
+  tipo             movimiento_inventario_tipo
+  cantidad         Int
+  motivo           String?                    @db.VarChar(255)
+  fecha_movimiento DateTime                   @default(now()) @db.DateTime(0)
+  kardex           kardex[]
+  producto         producto                   @relation(fields: [id_producto], references: [id_producto], onUpdate: Restrict, map: "fk_movimiento_producto")
+  usuario          usuario                    @relation(fields: [id_usuario], references: [id_usuario], onUpdate: Restrict, map: "fk_movimiento_usuario")
+
+  @@index([id_producto], map: "fk_movimiento_producto")
+  @@index([id_usuario], map: "fk_movimiento_usuario")
+}
+
+model orden_compra {
+  id_orden_compra        Int                    @id @default(autoincrement()) @db.UnsignedInt
+  id_proveedor           Int                    @db.UnsignedInt
+  id_usuario             Int                    @db.UnsignedInt
+  numero_orden           String                 @unique(map: "uq_orden_compra_numero") @db.VarChar(30)
+  fecha_emision          DateTime               @default(now()) @db.DateTime(0)
+  fecha_entrega_esperada DateTime?              @db.Date
+  estado                 orden_compra_estado    @default(borrador)
+  subtotal               Decimal                @default(0.00) @db.Decimal(12, 2)
+  iva                    Decimal                @default(0.00) @db.Decimal(12, 2)
+  total                  Decimal                @default(0.00) @db.Decimal(12, 2)
+  observaciones          String?                @db.VarChar(500)
+  detalle_orden_compra   detalle_orden_compra[]
+  proveedor              proveedor              @relation(fields: [id_proveedor], references: [id_proveedor], onUpdate: Restrict, map: "fk_oc_proveedor")
+  usuario                usuario                @relation(fields: [id_usuario], references: [id_usuario], onUpdate: Restrict, map: "fk_oc_usuario")
+  recepcion_compra       recepcion_compra[]
+
+  @@index([id_proveedor], map: "fk_oc_proveedor")
+  @@index([id_usuario], map: "fk_oc_usuario")
+}
+
+model pago {
+  id_pago                Int         @id @default(autoincrement()) @db.UnsignedInt
+  id_pedido              Int         @db.UnsignedInt
+  id_metodo_pago         Int         @db.UnsignedInt
+  monto                  Decimal     @db.Decimal(12, 2)
+  moneda                 String      @default("USD") @db.Char(3)
+  estado                 pago_estado @default(pendiente)
+  referencia_transaccion String?     @db.VarChar(100)
+  fecha_pago             DateTime    @default(now()) @db.DateTime(0)
+  metodo_pago            metodo_pago @relation(fields: [id_metodo_pago], references: [id_metodo_pago], onUpdate: Restrict, map: "fk_pago_metodo")
+  pedido                 pedido      @relation(fields: [id_pedido], references: [id_pedido], onUpdate: Restrict, map: "fk_pago_pedido")
+
+  @@index([id_metodo_pago], map: "fk_pago_metodo")
+  @@index([id_pedido], map: "fk_pago_pedido")
+}
+
+model pedido {
+  id_pedido                                            Int                       @id @default(autoincrement()) @db.UnsignedInt
+  id_usuario                                           Int                       @db.UnsignedInt
+  id_direccion_envio                                   Int                       @db.UnsignedInt
+  id_direccion_facturacion                             Int                       @db.UnsignedInt
+  id_cupon                                             Int?                      @db.UnsignedInt
+  numero_pedido                                        String                    @unique(map: "uq_pedido_numero") @db.VarChar(30)
+  fecha_pedido                                         DateTime                  @default(now()) @db.DateTime(0)
+  estado                                               pedido_estado             @default(pendiente)
+  subtotal                                             Decimal                   @default(0.00) @db.Decimal(12, 2)
+  descuento                                            Decimal                   @default(0.00) @db.Decimal(12, 2)
+  iva                                                  Decimal                   @default(0.00) @db.Decimal(12, 2)
+  costo_envio                                          Decimal                   @default(0.00) @db.Decimal(12, 2)
+  total                                                Decimal                   @default(0.00) @db.Decimal(12, 2)
+  observaciones                                        String?                   @db.VarChar(500)
+  detalle_pedido                                       detalle_pedido[]
+  envio                                                envio[]
+  factura                                              factura?
+  historial_estado_pedido                              historial_estado_pedido[]
+  pago                                                 pago[]
+  cupon                                                cupon?                    @relation(fields: [id_cupon], references: [id_cupon], onDelete: Restrict, onUpdate: Restrict, map: "fk_pedido_cupon")
+  direccion_pedido_id_direccion_envioTodireccion       direccion                 @relation("pedido_id_direccion_envioTodireccion", fields: [id_direccion_envio], references: [id_direccion], onUpdate: Restrict, map: "fk_pedido_dir_envio")
+  direccion_pedido_id_direccion_facturacionTodireccion direccion                 @relation("pedido_id_direccion_facturacionTodireccion", fields: [id_direccion_facturacion], references: [id_direccion], onUpdate: Restrict, map: "fk_pedido_dir_factura")
+  usuario                                              usuario                   @relation(fields: [id_usuario], references: [id_usuario], onUpdate: Restrict, map: "fk_pedido_usuario")
+
+  @@index([id_cupon], map: "fk_pedido_cupon")
+  @@index([id_direccion_envio], map: "fk_pedido_dir_envio")
+  @@index([id_direccion_facturacion], map: "fk_pedido_dir_factura")
+  @@index([id_usuario], map: "fk_pedido_usuario")
+}
+
+model producto {
+  id_producto           Int                     @id @default(autoincrement()) @db.UnsignedInt
+  id_categoria          Int                     @db.UnsignedInt
+  id_marca              Int                     @db.UnsignedInt
+  sku                   String                  @unique(map: "uq_producto_sku") @db.VarChar(50)
+  nombre                String                  @db.VarChar(200)
+  descripcion           String?                 @db.Text
+  precio_venta          Decimal                 @db.Decimal(12, 2)
+  costo                 Decimal                 @default(0.00) @db.Decimal(12, 2)
+  porcentaje_iva        Decimal                 @default(15.00) @db.Decimal(5, 2)
+  garantia_meses        Int                     @default(0) @db.UnsignedSmallInt
+  peso_kg               Decimal?                @db.Decimal(8, 3)
+  estado                producto_estado         @default(activo)
+  destacado             Boolean                 @default(false)
+  fecha_creacion        DateTime                @default(now()) @db.DateTime(0)
+  fecha_actualizacion   DateTime                @default(now()) @db.DateTime(0)
+  detalle_orden_compra  detalle_orden_compra[]
+  detalle_pedido        detalle_pedido[]
+  especificacion        especificacion[]
+  favorito              favorito[]
+  imagen_producto       imagen_producto[]
+  inventario            inventario?
+  item_carrito          item_carrito[]
+  kardex                kardex[]
+  movimiento_inventario movimiento_inventario[]
+  categoria             categoria               @relation(fields: [id_categoria], references: [id_categoria], onUpdate: Restrict, map: "fk_producto_categoria")
+  marca                 marca                   @relation(fields: [id_marca], references: [id_marca], onUpdate: Restrict, map: "fk_producto_marca")
+  producto_proveedor    producto_proveedor[]
+  resena                resena[]
+
+  @@index([id_categoria], map: "fk_producto_categoria")
+  @@index([id_marca], map: "fk_producto_marca")
+}
+
+model producto_proveedor {
+  id_producto        Int       @db.UnsignedInt
+  id_proveedor       Int       @db.UnsignedInt
+  costo_compra       Decimal   @db.Decimal(12, 2)
+  plazo_entrega_dias Int       @default(0) @db.UnsignedSmallInt
+  producto           producto  @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade, onUpdate: Restrict, map: "fk_pp_producto")
+  proveedor          proveedor @relation(fields: [id_proveedor], references: [id_proveedor], onDelete: Cascade, onUpdate: Restrict, map: "fk_pp_proveedor")
+
+  @@id([id_producto, id_proveedor])
+  @@index([id_proveedor], map: "fk_pp_proveedor")
+}
+
+model proveedor {
+  id_proveedor       Int                  @id @default(autoincrement()) @db.UnsignedInt
+  razon_social       String               @db.VarChar(150)
+  ruc                String               @unique(map: "uq_proveedor_ruc") @db.VarChar(13)
+  email              String?              @db.VarChar(150)
+  telefono           String?              @db.VarChar(20)
+  direccion          String?              @db.VarChar(255)
+  activo             Boolean              @default(true)
+  orden_compra       orden_compra[]
+  producto_proveedor producto_proveedor[]
+}
+
+model recepcion_compra {
+  id_recepcion            Int                     @id @default(autoincrement()) @db.UnsignedInt
+  id_orden_compra         Int                     @db.UnsignedInt
+  id_usuario              Int                     @db.UnsignedInt
+  numero_recepcion        String                  @unique(map: "uq_recepcion_numero") @db.VarChar(30)
+  fecha_recepcion         DateTime                @default(now()) @db.DateTime(0)
+  guia_remision_proveedor String?                 @db.VarChar(50)
+  estado                  recepcion_compra_estado @default(pendiente)
+  observaciones           String?                 @db.VarChar(500)
+  detalle_recepcion       detalle_recepcion[]
+  orden_compra            orden_compra            @relation(fields: [id_orden_compra], references: [id_orden_compra], onUpdate: Restrict, map: "fk_rc_orden")
+  usuario                 usuario                 @relation(fields: [id_usuario], references: [id_usuario], onUpdate: Restrict, map: "fk_rc_usuario")
+
+  @@index([id_orden_compra], map: "fk_rc_orden")
+  @@index([id_usuario], map: "fk_rc_usuario")
+}
+
+model resena {
+  id_resena         Int                      @id @default(autoincrement()) @db.UnsignedInt
+  id_usuario        Int                      @db.UnsignedInt
+  id_producto       Int                      @db.UnsignedInt
+  calificacion      Int                      @db.UnsignedTinyInt
+  titulo            String?                  @db.VarChar(150)
+  comentario        String?                  @db.Text
+  fecha_resena      DateTime                 @default(now()) @db.DateTime(0)
+  compra_verificada Boolean                  @default(false)
+  estado_moderacion resena_estado_moderacion @default(pendiente)
+  producto          producto                 @relation(fields: [id_producto], references: [id_producto], onDelete: Cascade, onUpdate: Restrict, map: "fk_resena_producto")
+  usuario           usuario                  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: Restrict, map: "fk_resena_usuario")
+
+  @@index([id_producto], map: "fk_resena_producto")
+  @@index([id_usuario], map: "fk_resena_usuario")
+}
+
+model rol {
+  id_rol      Int       @id @default(autoincrement()) @db.UnsignedInt
+  nombre      String    @unique(map: "uq_rol_nombre") @db.VarChar(50)
+  descripcion String?   @db.VarChar(255)
+  usuario     usuario[]
+}
+
+model transportista {
+  id_transportista Int     @id @default(autoincrement()) @db.UnsignedInt
+  nombre           String  @db.VarChar(100)
+  telefono         String? @db.VarChar(20)
+  sitio_web        String? @db.VarChar(255)
+  activo           Boolean @default(true)
+  envio            envio[]
+}
+
+model usuario {
+  id_usuario            Int                     @id @default(autoincrement()) @db.UnsignedInt
+  id_rol                Int                     @db.UnsignedInt
+  identificacion        String                  @unique(map: "uq_usuario_identificacion") @db.VarChar(20)
+  nombres               String                  @db.VarChar(100)
+  apellidos             String                  @db.VarChar(100)
+  email                 String                  @unique(map: "uq_usuario_email") @db.VarChar(150)
+  telefono              String?                 @db.VarChar(20)
+  contrasena_hash       String                  @db.VarChar(255)
+  fecha_nacimiento      DateTime?               @db.Date
+  fecha_registro        DateTime                @default(now()) @db.DateTime(0)
+  ultimo_acceso         DateTime?               @db.DateTime(0)
+  estado                usuario_estado          @default(activo)
+  carrito               carrito[]
+  direccion             direccion[]
+  favorito              favorito[]
+  kardex                kardex[]
+  movimiento_inventario movimiento_inventario[]
+  orden_compra          orden_compra[]
+  pedido                pedido[]
+  recepcion_compra      recepcion_compra[]
+  resena                resena[]
+  rol                   rol                     @relation(fields: [id_rol], references: [id_rol], onUpdate: Restrict, map: "fk_usuario_rol")
+
+  @@index([id_rol], map: "fk_usuario_rol")
+}
+
+enum carrito_estado {
+  activo
+  convertido
+  abandonado
+}
+
+enum cupon_tipo_descuento {
+  porcentaje
+  monto_fijo
+}
+
+enum movimiento_inventario_tipo {
+  entrada
+  salida
+  ajuste
+}
+
+enum devolucion_estado {
+  solicitada
+  aprobada
+  rechazada
+  completada
+}
+
+enum envio_estado {
+  preparando
+  despachado
+  en_transito
+  entregado
+  fallido
+}
+
+enum kardex_tipo_documento {
+  inventario_inicial
+  recepcion_compra
+  venta
+  devolucion_cliente
+  devolucion_proveedor
+  ajuste_positivo
+  ajuste_negativo
+}
+
+enum pago_estado {
+  pendiente
+  aprobado
+  rechazado
+  reembolsado
+}
+
+enum orden_compra_estado {
+  borrador
+  enviada
+  recibida_parcial
+  recibida_total
+  cancelada
+}
+
+enum recepcion_compra_estado {
+  pendiente
+  completada
+  anulada
+}
+
+enum pedido_estado {
+  pendiente
+  pagado
+  preparando
+  enviado
+  entregado
+  cancelado
+  devuelto
+}
+
+enum resena_estado_moderacion {
+  pendiente
+  aprobada
+  rechazada
+}
+
+enum factura_estado {
+  emitida
+  anulada
+}
+
+enum producto_estado {
+  activo
+  inactivo
+  descontinuado
+}
+
+enum usuario_estado {
+  activo
+  inactivo
+  bloqueado
+}
