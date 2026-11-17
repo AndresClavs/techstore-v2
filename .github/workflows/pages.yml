@@ -1,0 +1,41 @@
+name: Publicar tienda
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Preparar vistas
+        env:
+          API_ORIGIN: ${{ vars.RENDER_API_ORIGIN }}
+        run: |
+          mkdir -p site/js
+          cp index.html carrito.html cuenta.html gestion.html site/
+          cp -R assets site/
+          cp js/{api,tienda,compra,cuenta,gestion}.js site/js/
+          node --input-type=module <<'JS'
+          import {writeFileSync} from 'node:fs';
+          const origin = process.env.API_ORIGIN;
+          if (origin && new URL(origin).protocol !== 'https:') throw Error('Se requiere HTTPS');
+          const config = origin ? 'export const apiBase = '+JSON.stringify(new URL(origin).origin+'/api')+';' : 'export const apiBase = null;';
+          writeFileSync('site/js/deployment.js', config);
+          JS
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: publish
+        uses: actions/deploy-pages@v4

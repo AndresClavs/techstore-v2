@@ -1,3 +1,4 @@
+import { apiBase } from "./deployment.js";
 export const $ = (id) => document.getElementById(id);
 export const money = (n) =>
   new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" }).format(
@@ -20,10 +21,11 @@ export function status(message) {
   if (el) el.textContent = message;
 }
 export async function api(path, method = "GET", body) {
+  if (!apiBase) throw Error("La tienda está en línea. La conexión con el servidor aún está pendiente.");
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (session()) headers.Authorization = "Bearer " + session().token;
-  const response = await fetch("/api" + path, {
+  const response = await fetch(apiBase + path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -33,7 +35,7 @@ export async function api(path, method = "GET", body) {
   if (!response.ok) {
     if (response.status === 401 && session()) {
       logout();
-      location.assign("/cuenta.html");
+      location.assign("cuenta.html");
     }
     throw Error(
       (result.error?.mensaje || "Solicitud fallida") +

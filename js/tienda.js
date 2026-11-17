@@ -18,7 +18,7 @@ const grid = $("grid-productos"),
   filters = $("filtros");
 function signed() {
   if (!session()) {
-    location.assign("/cuenta.html");
+    location.assign("cuenta.html");
     return false;
   }
   return true;

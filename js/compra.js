@@ -1,7 +1,7 @@
 import { $, data, action, form, status, money, node, session } from "./api.js";
 async function render() {
   if (!session()) {
-    location.replace("/cuenta.html");
+    location.replace("cuenta.html");
     return;
   }
   const c = await data("/carrito");
@@ -129,7 +129,7 @@ async function render() {
             id_metodo_pago,
           });
         } finally {
-          location.assign("/cuenta.html?pedido=" + p.id_pedido);
+          location.assign("cuenta.html?pedido=" + p.id_pedido);
         }
       },
     ),

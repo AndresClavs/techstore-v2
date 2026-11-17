@@ -58,7 +58,7 @@ Las pruebas de API crean registros identificados como pruebas, contabilizan sus 
 - El SQL local completo incluye `DROP DATABASE`. Se usa solo para inicializar desde cero. En una instalación existente usa la introspección y la verificación.
 ## Despliegue en Render
 
-1. Abre el panel de Render y elige **New → Blueprint**. Conecta GitHub, autoriza el repositorio privado `AndresClavs/techstore-v2` y selecciona la rama `main`.
+1. Abre el panel de Render y elige **New → Blueprint**. Conecta GitHub, autoriza el repositorio público `AndresClavs/techstore-v2` y selecciona la rama `main`.
 2. Revisa los recursos de pago que propone `render.yaml`: un servicio web Node, un MySQL privado y un disco persistente de 10 GB. Introduce contraseñas nuevas para `ADMIN_PASSWORD` y `DEMO_USERS_PASSWORD` en el panel. Render genera las claves de MySQL y JWT. Confirma la creación cuando aceptes el importe mostrado.
 3. El primer arranque de MySQL 8.4 crea las tablas en el disco vacío. El servicio web instala dependencias, genera Prisma Client para Linux y carga el catálogo inicial. La base de Render empieza con datos de muestra. Los pedidos y clientes locales permanecen en MariaDB local.
 4. Espera a que ambos servicios indiquen **Live** y usa la URL real del servicio web. Comprueba `/api/health`, abre el catálogo e inicia sesión en `/cuenta.html`. En el primer despliegue, antes de recibir clientes, ejecuta desde `backend` las pruebas con `BASE_URL` y las credenciales **del entorno remoto**. Las pruebas de humo registran pedidos y movimientos de prueba.
@@ -73,3 +73,5 @@ mysqldump -u "$MYSQL_USER" -p --single-transaction --quick --no-tablespaces --se
 ```
 
 Para recuperar datos, importa un respaldo lógico con el cliente MySQL. Render desaconseja restaurar MySQL mediante un snapshot del disco por el riesgo de corrupción. [Guía de MySQL en Render](https://render.com/docs/deploy-mysql).
+
+GitHub Pages publica las cuatro vistas mediante Actions. Configura la variable de repositorio RENDER_API_ORIGIN con el origen HTTPS real del servicio web de Render y vuelve a ejecutar Publicar tienda para conectar el catálogo.

@@ -470,7 +470,7 @@ async function show(name, page = 1) {
   }
 }
 if (!["Administrador", "Vendedor", "Bodeguero"].includes(role))
-  location.replace("/cuenta.html");
+  location.replace("cuenta.html");
 else {
   menu.append(action("Resumen", dashboard));
   for (const [key, names] of Object.entries(sections))
