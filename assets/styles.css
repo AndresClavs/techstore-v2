@@ -205,3 +205,9 @@ input.ok { border-color: var(--success); }
 .workspace table { border-collapse:collapse; font-size:.9rem; display:block; overflow:auto }
 .workspace th,.workspace td { padding:.55rem; border-bottom:1px solid #949faf; text-align:left }
 .workspace button,.producto-info button { margin:.2rem }
+.replication-notice { padding:.75rem 1rem; border-left:4px solid #b45309; background:#fffbeb; color:#78350f }
+.replication-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem }
+.replication-node { display:grid; gap:.5rem; align-content:start }
+.replication-node h3 { color:var(--primary) }
+.replication-steps { padding-left:3rem }
+.replication-steps li { padding:.3rem 0 }

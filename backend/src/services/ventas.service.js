@@ -12,6 +12,7 @@ import {
   decimal,
   stock,
   registrarMovimiento,
+  liberarReserva,
 } from "../services/inventario.service.js";
 import { id, list, failure } from "../utils/contract.js";
 async function state(tx, p, estado, comentario) {
@@ -24,13 +25,7 @@ async function cancel(tx, p) {
   if (p.estado !== "pendiente")
     throw failure(409, "Solo puedes cancelar un pedido pendiente");
   for (const d of p.detalle_pedido) {
-    await stock(tx, d.id_producto);
-    await repos
-      .inventario(tx)
-      .update({
-        where: { id_producto: d.id_producto },
-        data: { stock_reservado: { decrement: d.cantidad } },
-      });
+    await liberarReserva(tx, d.id_producto, d.cantidad);
   }
   if (p.id_cupon)
     await repos
@@ -57,13 +52,7 @@ async function paid(tx, p, user) {
     });
   if ((sum._sum.monto ?? decimal(0)).lt(p.total)) return;
   for (const d of p.detalle_pedido) {
-    await stock(tx, d.id_producto);
-    await repos
-      .inventario(tx)
-      .update({
-        where: { id_producto: d.id_producto },
-        data: { stock_reservado: { decrement: d.cantidad } },
-      });
+    await liberarReserva(tx, d.id_producto, d.cantidad);
     await registrarMovimiento(tx, {
       id_producto: d.id_producto,
       id_usuario: user.id_usuario,

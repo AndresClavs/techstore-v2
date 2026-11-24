@@ -24,7 +24,7 @@ const sections = {
     "transportistas",
   ],
   Bodega: ["inventario", "proveedores", "ordenes-compra", "recepciones"],
-  Administración: ["usuarios", "roles"],
+  Administración: ["usuarios", "roles", "bases-distribuidas"],
 };
 const pk = {
   productos: "id_producto",
@@ -194,6 +194,10 @@ function purchaseEditor(title, save, existing) {
   return section;
 }
 async function show(name, page = 1) {
+  if (name === "bases-distribuidas") {
+    distributedDatabases();
+    return;
+  }
   const base = "/admin/" + name,
     result = await api(base + "?pagina=" + page),
     rows = result.data;
@@ -468,6 +472,64 @@ async function show(name, page = 1) {
     );
     main.insertBefore(picker, panel);
   }
+}
+function distributedDatabases() {
+  main.replaceChildren(
+    node("h2", "Bases de datos distribuidas"),
+    node(
+      "p",
+      "Topología propuesta: Quito es la base primaria y recibe las escrituras. Guayaquil y Cuenca reciben réplicas para consultas y reportes.",
+    ),
+    node(
+      "p",
+      "Estado: diseño informativo. Las réplicas todavía no están configuradas ni conectadas a la aplicación.",
+      { class: "replication-notice", role: "status" },
+    ),
+  );
+  const grid = node("div", null, { class: "replication-grid" });
+  for (const [city, role, detail] of [
+    [
+      "Quito",
+      "Base central · primaria",
+      "MariaDB actual. Único nodo autorizado para escrituras de la aplicación.",
+    ],
+    [
+      "Guayaquil",
+      "Réplica de lectura",
+      "Copia de los datos de Quito para consultas locales y reportes.",
+    ],
+    [
+      "Cuenca",
+      "Réplica de lectura",
+      "Copia de los datos de Quito para consultas locales y reportes.",
+    ],
+  ]) {
+    const card = node("section", null, { class: "panel replication-node" });
+    card.append(node("h3", city), node("strong", role), node("p", detail));
+    grid.append(card);
+  }
+  main.append(
+    grid,
+    node("h3", "Flujo de datos"),
+    node(
+      "p",
+      "Tienda/API → Quito (lecturas y escrituras) → replicación MariaDB → Guayaquil y Cuenca (solo lectura).",
+      { class: "panel" },
+    ),
+    node("h3", "Pasos para habilitarlo"),
+  );
+  const steps = node("ol", null, { class: "panel replication-steps" });
+  for (const text of [
+    "Preparar tres servidores MariaDB compatibles, con red privada/VPN entre sedes y acceso al puerto 3306 limitado a los nodos autorizados.",
+    "Asignar un server_id único a cada servidor y habilitar binlog en Quito con binlog_format=ROW.",
+    "Crear una cuenta de replicación con privilegios mínimos y tomar una copia inicial consistente de Quito.",
+    "Importar esa copia en Guayaquil y Cuenca; configurar ambas para seguir a Quito con GTID y dejarlas de solo lectura.",
+    "Iniciar la replicación y verificar el estado IO/SQL, el retraso y que las tablas/datos coincidan.",
+    "Configurar copias de seguridad y alertas. Probar recuperación/promoción manual antes de depender de una réplica.",
+    "Adaptar el backend: mantener escrituras y transacciones en Quito y dirigir lecturas permitidas a las réplicas; tras una escritura, leer desde Quito para evitar datos atrasados.",
+  ])
+    steps.append(node("li", text));
+  main.append(steps);
 }
 if (!["Administrador", "Vendedor", "Bodeguero"].includes(role))
   location.replace("cuenta.html");

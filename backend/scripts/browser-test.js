@@ -46,6 +46,18 @@ try {
       .click();
     await page.locator("#workspace h2").filter({ hasText: label }).waitFor();
   }
+  await page
+    .locator("#modules")
+    .getByRole("button", { name: "bases distribuidas", exact: true })
+    .click();
+  await page
+    .locator("#workspace h2")
+    .filter({ hasText: "Bases de datos distribuidas" })
+    .waitFor();
+  await page.getByText("Quito", { exact: true }).waitFor();
+  await page.getByText("Guayaquil", { exact: true }).waitFor();
+  await page.getByText("Cuenca", { exact: true }).waitFor();
+  await page.getByText("informativo").waitFor();
   await page.goto("/");
   await page
     .locator(".producto-card")

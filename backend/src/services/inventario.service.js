@@ -75,3 +75,23 @@ export async function registrarMovimiento(
       },
     });
 }
+export async function reservar(tx, id_producto, cantidad) {
+  const inv = await stock(tx, id_producto);
+  if (inv.stock_actual - inv.stock_reservado < cantidad)
+    throw failure(409, "Stock disponible insuficiente");
+  return repos
+    .inventario(tx)
+    .update({
+      where: { id_producto },
+      data: { stock_reservado: { increment: cantidad } },
+    });
+}
+export async function liberarReserva(tx, id_producto, cantidad) {
+  await stock(tx, id_producto);
+  return repos
+    .inventario(tx)
+    .update({
+      where: { id_producto },
+      data: { stock_reservado: { decrement: cantidad } },
+    });
+}

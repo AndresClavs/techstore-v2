@@ -468,3 +468,39 @@ Idempotente (usa `upsert`). Debe crear como mínimo: los 4 roles (`Administrador
 3. Si este documento y el código existente del frontend chocan en una ruta o un formato de campo, **no adivinar**: adaptar el backend a lo definido aquí y listar las diferencias en el `README.md` para que se ajuste el frontend.
 4. Mensajes y errores al usuario en **español**; identificadores de código tal como están en la BD.
 5. Antes de dar una tarea por terminada, recorrer la checklist de la sección 14.
+
+---
+
+## 16. Topología distribuida propuesta: Quito, Guayaquil y Cuenca
+
+### Estado actual
+
+La conexión de la aplicación es una sola (`DATABASE_URL`) y Prisma usa un único `PrismaClient`. La interfaz de Gestión muestra el diseño propuesto, pero **no configura, monitorea ni demuestra que existan réplicas**. La base MariaDB existente en Quito se conserva como primaria; Guayaquil y Cuenca serán réplicas de lectura cuando se provisionen y configuren. No se debe cambiar la conexión de producción ni afirmar que hay alta disponibilidad hasta completar y probar los pasos siguientes.
+
+### Topología y reglas de escritura
+
+```text
+Tienda/API
+    │ lecturas y escrituras
+    ▼
+Quito · MariaDB primaria
+    ├── replicación asíncrona ──► Guayaquil · réplica, solo lectura
+    └── replicación asíncrona ──► Cuenca · réplica, solo lectura
+```
+
+- Quito es el único escritor. Guayaquil y Cuenca reciben el conjunto de datos mediante replicación; no son bases independientes por sucursal.
+- La replicación asíncrona puede tener retraso. Consultas que deben reflejar una escritura recién confirmada, checkout, stock, pagos y cualquier transacción se leen/escriben en Quito.
+- Una réplica no es por sí sola un respaldo ni un mecanismo de failover automático. Definir recuperación, promoción controlada, respaldos y monitorización antes de usarla en producción.
+
+### Pasos de configuración de MariaDB
+
+1. **Acordar infraestructura y red.** Aprovisionar dos servidores MariaDB 10.11 compatibles con Quito. Establecer red privada o VPN entre sedes, cifrado en tránsito y reglas de firewall que permitan el puerto 3306 solo entre direcciones autorizadas; no exponer MariaDB directamente a Internet.
+2. **Configurar identificadores y binlog.** Asignar un `server_id` entero distinto a cada instancia. En Quito habilitar `log_bin` y `binlog_format=ROW`; conservar binlogs el tiempo suficiente para cubrir indisponibilidades previstas. Reiniciar según la política del servidor y comprobar `SHOW VARIABLES LIKE 'log_bin';` y `SHOW MASTER STATUS;`.
+3. **Crear una cuenta de replicación restringida en Quito.** Limitar su host a las IP de las réplicas, usar una contraseña fuerte fuera del repositorio y conceder únicamente el privilegio `REPLICATION SLAVE`. No reutilizar la cuenta de la aplicación ni `root`.
+4. **Inicializar las réplicas desde una copia consistente.** Tomar un respaldo lógico o físico compatible con el tamaño y actividad de la base, restaurarlo en ambos servidores y conservar el estado/posición GTID que corresponda. No copiar archivos de una base activa sin el mecanismo de respaldo consistente.
+5. **Configurar Guayaquil y Cuenca como seguidoras GTID.** En cada nodo usar su `server_id`, configurar como fuente la dirección privada de Quito y las credenciales de replicación protegidas, activar `read_only=ON` e iniciar la réplica con el mecanismo GTID compatible con la versión instalada de MariaDB. No ejecutar escrituras de aplicación en los nodos secundarios.
+6. **Validar y monitorear.** Revisar `SHOW SLAVE STATUS\G` (o la sintaxis equivalente de la versión), confirmar que los hilos IO y SQL estén activos, revisar errores/GTID/retraso y comparar datos. Configurar alertas, rotación/retención de binlogs y respaldos restaurables. Ensayar caída de red y recuperación sin promover nodos automáticamente.
+7. **Habilitar la aplicación en una entrega separada.** Mantener Quito como conexión de escritura. Añadir conexiones/configuración de lectura para las réplicas únicamente cuando se defina qué consultas toleran retraso, y enrutar allí solo esas consultas. Probar transacciones y lecturas posteriores a escritura contra Quito. No reutilizar `DATABASE_URL` como si realizara el balanceo: Prisma y el backend actuales no seleccionan réplicas.
+8. **Documentar recuperación y activar gradualmente.** Definir responsable y pasos de promoción/failback, medir retraso y carga, probar restauraciones y desplegar primero consultas no críticas. La aplicación debe seguir operando en modo solo Quito si una réplica no está disponible.
+
+La topología no requiere nuevas tablas ni cambios al esquema de `techstore_pro`: la replicación se configura en los servidores MariaDB. No ejecutar `prisma migrate` ni `prisma db push` para este trabajo. Antes de activar la lectura distribuida deben implementarse en el backend la selección explícita de conexiones y la observabilidad del estado; el módulo de interfaz es por ahora documentación del diseño, no un panel de salud en tiempo real.

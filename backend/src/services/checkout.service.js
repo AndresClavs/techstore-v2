@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { repos, transaction } from "../models/base.repository.js";
-import { stock, round, decimal } from "./inventario.service.js";
+import { stock, round, decimal, reservar } from "./inventario.service.js";
 import { failure } from "../utils/contract.js";
 export const temporary = () => randomUUID().replaceAll("-", "").slice(0, 28);
 export const numberDoc = (prefix, id) =>
@@ -176,12 +176,7 @@ export const checkout = ({ user, body }) =>
       const inv = await stock(tx, i.id_producto);
       if (!i.activo || inv.stock_actual - inv.stock_reservado < i.cantidad)
         throw failure(409, "Stock insuficiente para " + i.nombre);
-      await repos
-        .inventario(tx)
-        .update({
-          where: { id_producto: i.id_producto },
-          data: { stock_reservado: { increment: i.cantidad } },
-        });
+      await reservar(tx, i.id_producto, i.cantidad);
     }
     const p = await repos
       .pedido(tx)
