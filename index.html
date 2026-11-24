@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="TechStore Pro: catálogo de tecnología con carrito de compras accesible y persistente.">
     <title>Catálogo - TechStore Pro</title>
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
@@ -34,6 +35,12 @@
             <h1 id="titulo-pagina" tabindex="-1">Tecnología que potencia tu día</h1>
             <p class="hero-texto">Audio, periféricos, pantallas, laptops y más. Elige tus productos y arma tu carrito en segundos.</p>
             <p id="ultima-visita" class="hero-nota"></p>
+        </section>
+
+        <section id="favoritos" class="favoritos-seccion" aria-labelledby="t-favoritos" hidden>
+            <h2 id="t-favoritos"><span aria-hidden="true">♥</span> Mis favoritos</h2>
+            <p id="favoritos-total"></p>
+            <div id="favoritos-lista" class="favoritos-lista"></div>
         </section>
 
         <section aria-labelledby="t-catalogo">

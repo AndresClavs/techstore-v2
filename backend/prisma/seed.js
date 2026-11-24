@@ -69,7 +69,10 @@ export async function runSeed() {
       categoria,
       precio,
       descripcion,
-      imagen: "assets/img/placeholder.svg",
+      imagen:
+        "assets/img/productos/" +
+        (marca + "-" + modelo).toLowerCase().replaceAll(" ", "-") +
+        ".jpg",
     });
   }
   return transaction(async (tx) => {
@@ -202,6 +205,16 @@ export async function runSeed() {
               inventario: { create: { stock_minimo: 5 } },
             },
           }));
+      if (existing)
+        await repos
+          .imagen_producto(tx)
+          .updateMany({
+            where: {
+              id_producto: product.id_producto,
+              url: "assets/img/placeholder.svg",
+            },
+            data: { url: p.imagen },
+          });
       for (const [nombre, valor] of [
         ["Marca", marca.nombre],
         ["Categoría", categoria.nombre],

@@ -47,17 +47,111 @@ export async function api(path, method = "GET", body) {
   return result;
 }
 export const data = async (...args) => (await api(...args)).data;
+const ICONS = { exito: "✓", error: "✕", info: "i", aviso: "!" };
+// Notificación flotante: tipo "exito" (verde), "error" (rojo), "aviso" o "info".
+export function notify(message, type = "exito", options = {}) {
+  let stack = $("notificaciones");
+  if (!stack) {
+    stack = node("div", null, {
+      id: "notificaciones",
+      class: "notificaciones",
+      "aria-live": "polite",
+    });
+    document.body.append(stack);
+  }
+  const item = node("div", null, {
+    class: "notificacion " + type,
+    role: type === "error" ? "alert" : "status",
+  });
+  const text = node("div", null, { class: "notificacion-texto" });
+  text.append(node("strong", options.title || message));
+  if (options.title) text.append(node("span", message));
+  item.append(
+    node("span", ICONS[type] || "i", { class: "notificacion-icono", "aria-hidden": "true" }),
+    text,
+  );
+  if (options.link)
+    item.append(node("a", options.link[0], { href: options.link[1], class: "notificacion-enlace" }));
+  const close = node("button", "×", { type: "button", class: "notificacion-cerrar", "aria-label": "Cerrar aviso" });
+  item.append(close);
+  const remove = () => {
+    item.classList.add("saliendo");
+    setTimeout(() => item.remove(), 250);
+  };
+  close.onclick = remove;
+  stack.append(item);
+  while (stack.children.length > 3) stack.firstChild.remove();
+  setTimeout(remove, options.duration || (type === "error" ? 6000 : 3500));
+}
+// Ventana de confirmación. danger=true pinta el botón de rojo; si no, verde.
+export function confirmar({
+  title,
+  message = "",
+  accept = "Confirmar",
+  cancel = "Cancelar",
+  danger = false,
+  details,
+}) {
+  return new Promise((resolve) => {
+    const dlg = node("dialog", null, { class: "dialogo" });
+    dlg.append(
+      node("div", danger ? "!" : "✓", {
+        class: "dialogo-icono " + (danger ? "alerta" : "exito"),
+        "aria-hidden": "true",
+      }),
+      node("h2", title),
+    );
+    if (message) dlg.append(node("p", message));
+    if (details) {
+      const dl = node("dl", null, { class: "resumen-pedido" });
+      for (const [k, v, strong] of details) {
+        dl.append(node("dt", k), node("dd", v, strong ? { class: "destacado" } : {}));
+      }
+      dlg.append(dl);
+    }
+    const actions = node("div", null, { class: "dialogo-acciones" });
+    const no = node("button", cancel, { type: "button", class: "btn-secundario" });
+    const yes = node("button", accept, {
+      type: "button",
+      class: danger ? "btn-peligro" : "btn-exito",
+    });
+    actions.append(no, yes);
+    dlg.append(actions);
+    let answer = false;
+    no.onclick = () => dlg.close();
+    yes.onclick = () => {
+      answer = true;
+      dlg.close();
+    };
+    dlg.onclose = () => {
+      dlg.remove();
+      resolve(answer);
+    };
+    document.body.append(dlg);
+    dlg.showModal();
+    no.focus();
+  });
+}
 export function task(fn) {
   return async (event) => {
     event?.preventDefault();
     const button = event?.submitter || event?.currentTarget;
-    if (button) button.disabled = true;
+    if (button?.disabled) return;
+    if (button) {
+      button.disabled = true;
+      button.classList.add("cargando");
+      button.setAttribute("aria-busy", "true");
+    }
     try {
       await fn(event);
     } catch (e) {
-      status(e.message);
+      notify(e.message, "error", { title: "No se pudo completar" });
     } finally {
-      if (button) button.disabled = false;
+      if (button) {
+        button.disabled = false;
+        button.classList.remove("cargando");
+        button.removeAttribute("aria-busy");
+      }
     }
   };
 }
@@ -104,7 +198,8 @@ export function nav() {
   const links = document.querySelector("nav ul");
   if (!links) return;
   for (const [name, path] of [
-    ["Mi cuenta", "cuenta.html"],
+    ...(canBuy() ? [["♥ Favoritos", "index.html#favoritos"]] : []),
+    [session() ? "Mi cuenta" : "Iniciar sesión", "cuenta.html"],
     ...(["Administrador", "Vendedor", "Bodeguero"].includes(
       session()?.usuario.rol,
     )
@@ -113,18 +208,33 @@ export function nav() {
   ]) {
     if (!links.querySelector('a[href="' + path + '"]')) {
       const li = node("li");
-      li.append(node("a", name, { href: path, class: "nav-link" }));
+      const link = node("a", name, { href: path, class: "nav-link" });
+      if (location.pathname.endsWith("/" + path)) link.setAttribute("aria-current", "page");
+      li.append(link);
       links.append(li);
     }
   }
 }
+export const canBuy = () =>
+  ["Cliente", "Administrador"].includes(session()?.usuario.rol);
 export async function counter() {
-  if (
-    !session() ||
-    !["Cliente", "Administrador"].includes(session().usuario.rol)
-  )
-    return;
+  if (!canBuy()) return;
   const c = await data("/carrito");
-  if ($("cart-count")) $("cart-count").textContent = c.resumen.total_items;
+  setBadge(c.resumen.total_items);
+}
+export function setBadge(n) {
+  const badge = $("cart-count");
+  if (!badge) return;
+  const changed = badge.textContent !== String(n);
+  badge.textContent = n;
+  $("enlace-carrito")?.setAttribute(
+    "aria-label",
+    "Carrito, " + n + (n === 1 ? " producto" : " productos"),
+  );
+  if (changed) {
+    badge.classList.remove("rebote");
+    void badge.offsetWidth;
+    badge.classList.add("rebote");
+  }
 }
 nav();

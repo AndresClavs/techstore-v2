@@ -21,11 +21,12 @@ try {
   await page.goto("/");
   await page.locator(".producto-card").first().waitFor();
   await page
-    .getByRole("button", { name: "Detalles", exact: true })
+    .getByRole("button", { name: "Ver detalles", exact: true })
     .first()
     .click();
   await page.getByRole("dialog").waitFor();
   await page.getByRole("button", { name: "Cerrar", exact: true }).click();
+  await page.getByRole("dialog").waitFor({ state: "detached" });
   await page.goto("/cuenta.html");
   const login = page.locator("form").first();
   await login.getByLabel("Correo").fill(process.env.ADMIN_EMAIL);
@@ -62,16 +63,25 @@ try {
   await page
     .locator(".producto-card")
     .first()
-    .getByRole("button", { name: "Añadir", exact: true })
+    .getByRole("button", { name: "🛒 Añadir al carrito", exact: true })
     .click();
-  await page.locator("#resumen").filter({ hasText: "añadido" }).waitFor();
+  await page.locator(".notificacion.exito").filter({ hasText: "añadido al carrito" }).first().waitFor();
+  const fav = page.locator(".producto-card").first().locator(".btn-fav");
+  const wasSaved = (await fav.getAttribute("aria-pressed")) === "true";
+  await fav.click();
+  await page.waitForFunction(
+    (before) => document.querySelector(".producto-card .btn-fav").getAttribute("aria-pressed") !== String(before),
+    wasSaved,
+  );
+  if (!wasSaved) await page.locator("#favoritos .mini-card").first().waitFor();
   await page.goto("/carrito.html");
   await page.locator("#lista-carrito li").first().waitFor();
   await page
     .locator("#lista-carrito li")
     .first()
-    .getByRole("button", { name: "−", exact: true })
+    .getByRole("button", { name: /Quitar una unidad/ })
     .click();
+  await page.locator("#checkout-fields .paso").first().waitFor();
   assert.deepEqual(errors, []);
   console.log(
     "Navegador: catálogo, detalles, sesión, panel de gestión y carrito verificados.",
