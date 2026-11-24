@@ -173,6 +173,7 @@ async function salesOrders(products) {
     dirs = (await call("/usuarios/" + me.id_usuario + "/direcciones")).data;
   }
   const pay = await all("/metodos-pago");
+  const shipping = (await all("/metodos-envio"))[0];
   const card = pay.find((m) => m.tipo === "tarjeta"),
     transfer = pay.find((m) => m.tipo === "transferencia");
   const plan = [
@@ -187,11 +188,12 @@ async function salesOrders(products) {
       const prod = products.find((p) => p.nombre.startsWith(name) && p.stock_disponible >= qty);
       if (prod) await call("/carrito/items", "POST", { id_producto: prod.id_producto, cantidad: qty }, 201);
     }
+    if (!(await call("/carrito")).data.items.length) continue;
     const order = (
       await call("/pedidos", "POST", {
         id_direccion_envio: dirs[0].id_direccion,
         id_direccion_facturacion: dirs[0].id_direccion,
-        id_metodo_envio: 1,
+        id_metodo_envio: shipping.id_metodo_envio,
         observaciones: "DEMO · Pedido de demostración",
       }, 201)
     ).data;

@@ -1199,8 +1199,8 @@ async function kardex(idProducto) {
     for (const [label, value, cls] of [
       ["Stock actual", fmt(k.saldo_actual?.stock_actual ?? 0)],
       ["Reservado", fmt(k.saldo_actual?.stock_reservado ?? 0)],
-      ["Entradas", "+" + fmt(entradas), "entrada"],
-      ["Salidas", "−" + fmt(salidas), "salida"],
+      ["Entradas", entradas ? "+" + fmt(entradas) : "0", "entrada"],
+      ["Salidas", salidas ? "−" + fmt(salidas) : "0", "salida"],
       ["Costo promedio", money(last?.saldo_costo_promedio ?? 0)],
       ["Valor en bodega", money(last?.saldo_valor ?? 0)],
     ]) {
