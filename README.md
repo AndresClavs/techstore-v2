@@ -2,6 +2,10 @@
 
 Tienda y panel administrativo en español. Express 4 sirve las páginas y la API en el mismo origen. Prisma 6 usa las 32 tablas existentes de MariaDB y el frontend conserva el HTML y los estilos del catálogo original.
 
+**Tienda publicada:** https://techstore-app-jb38.onrender.com
+
+**Documentación técnica:** [Arquitectura, MVC, patrones de diseño, modelo de datos, seguridad y catálogo de las 86 APIs](docs/ARQUITECTURA_Y_APIS.md)
+
 ## Ejecutar localmente
 
 Requiere Node.js 20 o superior, npm y MySQL/MariaDB con el esquema `techstore_pro`. Desde la raíz:
