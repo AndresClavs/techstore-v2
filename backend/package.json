@@ -11,7 +11,8 @@
     "dev": "node --watch src/server.js",
     "seed": "node prisma/seed.js",
     "smoke": "node scripts/smoke-test.js",
-    "test:browser": "node scripts/browser-test.js"
+    "test:browser": "node scripts/browser-test.js",
+    "demo": "node scripts/demo-data.js"
   },
   "dependencies": {
     "@prisma/client": "6.19.0",

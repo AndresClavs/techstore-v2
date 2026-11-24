@@ -49,6 +49,7 @@ Desde `backend`, con el servidor en marcha y los datos iniciales cargados:
 ```powershell
 npm.cmd run smoke
 npm.cmd run test:browser
+npm.cmd run demo
 ```
 
 Las pruebas de API crean registros identificados como pruebas, contabilizan sus movimientos e inactivan el producto y proveedor creados al finalizar. El historial permanece en la base utilizada. Usa una base de desarrollo. La prueba visual usa Chrome o Edge local y requiere una cuenta administrativa con la contraseña configurada. Define `BASE_URL` para probar otro puerto y `BROWSER_PATH` para elegir el ejecutable del navegador.

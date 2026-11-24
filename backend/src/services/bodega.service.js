@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { repos, transaction } from "../models/base.repository.js";
-import { id, list, failure, page } from "../utils/contract.js";
+import { LIMITE_UNIDADES_PROVEEDOR, id, list, failure, page } from "../utils/contract.js";
 import {
   registrarMovimiento,
   round,
@@ -143,6 +143,10 @@ export const getOrdenesCompra = ({ query }) =>
         ? id.parse(query.id_proveedor)
         : undefined,
     },
+    include: {
+      proveedor: { select: { razon_social: true, ruc: true } },
+      _count: { select: { detalle_orden_compra: true } },
+    },
     orderBy: { id_orden_compra: "desc" },
   });
 export const getOrdenesCompraRegistro = ({ params }) =>
@@ -152,14 +156,32 @@ export const getOrdenesCompraRegistro = ({ params }) =>
       where: { id_orden_compra: params.id },
       include: {
         proveedor: true,
-        detalle_orden_compra: true,
-        recepcion_compra: true,
+        detalle_orden_compra: {
+          include: { producto: { select: { nombre: true, sku: true } } },
+          orderBy: { id_detalle_oc: "asc" },
+        },
+        recepcion_compra: { orderBy: { id_recepcion: "asc" } },
       },
     });
 export const modificarOrdenesCompra = ({ user, params, body }) =>
   transaction(async (tx) => {
     const { detalles, ...header } = body;
     unique(detalles, "id_producto");
+    const unidades = detalles.reduce((a, l) => a + l.cantidad_solicitada, 0);
+    if (unidades > LIMITE_UNIDADES_PROVEEDOR)
+      throw failure(
+        422,
+        "Política de la empresa: no se pueden comprar más de " +
+          LIMITE_UNIDADES_PROVEEDOR.toLocaleString("es-EC") +
+          " unidades a un proveedor en una misma orden de compra. Esta orden suma " +
+          unidades.toLocaleString("es-EC") +
+          " unidades.",
+      );
+    const supplier = await repos
+      .proveedor(tx)
+      .findUnique({ where: { id_proveedor: header.id_proveedor } });
+    if (!supplier?.activo)
+      throw failure(422, "Selecciona un proveedor activo");
     if (params.id) {
       const oc = await repos
         .orden_compra(tx)
@@ -284,6 +306,7 @@ export const postOrdenesCompraRecepciones = ({ user, params, body }) =>
         cantidad: d.cantidad_recibida,
         tipo_documento: "recepcion_compra",
         id_documento: rec.id_recepcion,
+        detalle: "Recepción de " + oc.numero_orden,
         costo_unitario: line.costo_unitario,
       });
       await repos

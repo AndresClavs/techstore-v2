@@ -184,6 +184,9 @@ export const getAdminPedidos = ({ query }) =>
         { usuario: { email: { contains: query.q || "" } } },
       ],
     },
+    include: {
+      usuario: { select: { nombres: true, apellidos: true, email: true } },
+    },
     orderBy: { id_pedido: "desc" },
   });
 export const getPedidosRegistro = ({ params, user }) =>

@@ -132,6 +132,32 @@ export function confirmar({
     no.focus();
   });
 }
+// Aviso modal con un solo botón (por ejemplo, políticas de la empresa).
+export function avisar({ title, message, accept = "Entendido", type = "alerta" }) {
+  return new Promise((resolve) => {
+    const dlg = node("dialog", null, { class: "dialogo", role: "alertdialog" });
+    dlg.append(
+      node("div", type === "exito" ? "✓" : "!", {
+        class: "dialogo-icono " + type,
+        "aria-hidden": "true",
+      }),
+      node("h2", title),
+      node("p", message),
+    );
+    const actions = node("div", null, { class: "dialogo-acciones" });
+    const ok = node("button", accept, { type: "button", class: type === "exito" ? "btn-exito" : "btn-peligro" });
+    ok.onclick = () => dlg.close();
+    actions.append(ok);
+    dlg.append(actions);
+    dlg.onclose = () => {
+      dlg.remove();
+      resolve();
+    };
+    document.body.append(dlg);
+    dlg.showModal();
+    ok.focus();
+  });
+}
 export function task(fn) {
   return async (event) => {
     event?.preventDefault();

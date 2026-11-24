@@ -15,7 +15,9 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({
     baseURL: process.env.BASE_URL || "http://localhost:3000",
+    reducedMotion: "reduce",
   });
+  page.setDefaultTimeout(60000);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
@@ -37,7 +39,9 @@ try {
   for (const label of [
     "productos",
     "inventario",
-    "ordenes compra",
+    "Órdenes de compra",
+    "Órdenes de venta",
+    "Kardex",
     "recepciones",
     "usuarios",
   ]) {

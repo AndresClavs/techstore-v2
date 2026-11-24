@@ -2,6 +2,8 @@ import { z } from "zod";
 export const id = z.coerce.number().int().positive().max(4294967295);
 export const str = (n) => z.string().trim().min(1).max(n);
 export const money = z.number().finite().nonnegative().max(9999999999.99);
+// Política de la empresa: unidades máximas por orden de compra a un proveedor.
+export const LIMITE_UNIDADES_PROVEEDOR = 10000;
 export const failure = (status, message) =>
   Object.assign(new Error(message), { status });
 export const roles = {

@@ -179,6 +179,7 @@ erDiagram
 - **Compras:** orden `borrador → enviada → recibida_parcial → recibida_total`; la recepción suma stock y la anulación genera movimientos inversos.
 - **Devoluciones:** `solicitada → aprobada → completada`, con reingreso al inventario y reembolso del pago.
 - **Dinero:** precio sin IVA; IVA por línea (15 % por defecto) con redondeo a 2 decimales.
+- **Política de compras:** una orden de compra no puede superar **10.000 unidades** a un proveedor. Se valida en el backend (`LIMITE_UNIDADES_PROVEEDOR` en `utils/contract.js`, aplicada en `services/bodega.service.js`, responde 422) y en la interfaz de Gestión, que muestra el aviso «Política de la empresa».
 
 ---
 
@@ -399,5 +400,6 @@ Desde `backend/`:
 |---|---|
 | `npm run smoke` | Flujo completo de la API: permisos, compra a proveedor, recepción, kardex, carrito, cupón, checkout, pago, factura, envío, devolución y cancelación |
 | `npm run test:browser` | Interfaz: catálogo, detalle, sesión, panel de gestión, favoritos y carrito |
+| `npm run demo` | Crea datos de demostración por la API real: 4 proveedores con productos vinculados, órdenes de compra en cada estado (borrador, enviada, recibida parcial y total), órdenes de venta (pendiente, pagada, enviada) y verifica la política de 10.000 unidades. Es idempotente. |
 
 Para probar contra la versión publicada: `BASE_URL=https://techstore-app-jb38.onrender.com`.
