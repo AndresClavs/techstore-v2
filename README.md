@@ -56,7 +56,15 @@ Las pruebas de API crean registros identificados como pruebas, contabilizan sus 
 - El checkout reserva inventario. Un pago aprobado registra la salida física, el movimiento y el kardex en una sola transacción. Los pagos con tarjeta y la factura son simulados. Las transferencias y el efectivo requieren aprobación administrativa.
 - El método de envío elegido se conserva en el primer evento del historial del pedido, según el contrato del proyecto. Las cantidades y valores de salida llevan signo negativo.
 - El SQL local completo incluye `DROP DATABASE`. Se usa solo para inicializar desde cero. En una instalación existente usa la introspección y la verificación.
-## Despliegue en Render
+## Despliegue actual (gratuito)
+
+- Tienda: https://techstore-app-jb38.onrender.com (servicio web Render, plan free; tras unos 15 minutos sin uso tarda ~50 s en despertar).
+- Base de datos: MySQL 8.4 en Aiven (plan Developer-1 con créditos de prueba, sin tarjeta). La prueba de Aiven dura 30 días; al terminar el servicio se apaga si no se agrega un método de pago o se migra a otro MySQL.
+- `render.yaml` despliega solo el servicio web y recibe `DATABASE_URL` (con `sslaccept=accept_invalid_certs`, porque el CA de Aiven no es público). La variante con MySQL privado de pago está en `deploy/render.paid.yaml`.
+- El esquema se cargó con `database/techstore_pro.deploy.sql` y los datos demo con `npm run seed` desde el equipo local (`AUTO_SEED=false` en Render). `TX_TIMEOUT_MS` amplía el tiempo de las transacciones con bases remotas.
+- Las credenciales del entorno publicado están en `backend/.env.render` (excluido de git).
+
+## Despliegue en Render (variante de pago)
 
 1. Abre el panel de Render y elige **New → Blueprint**. Conecta GitHub, autoriza el repositorio público `AndresClavs/techstore-v2` y selecciona la rama `main`.
 2. Revisa los recursos de pago que propone `render.yaml`: un servicio web Node, un MySQL privado y un disco persistente de 10 GB. Introduce contraseñas nuevas para `ADMIN_PASSWORD` y `DEMO_USERS_PASSWORD` en el panel. Render genera las claves de MySQL y JWT. Confirma la creación cuando aceptes el importe mostrado.
