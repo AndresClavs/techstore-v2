@@ -1,0 +1,60 @@
+services:
+
+  - type: pserv
+    name: techstore-mysql
+    runtime: docker
+    dockerfilePath: ./deploy/mysql/Dockerfile
+    dockerContext: ./deploy/mysql
+    plan: 0.5c-512mb
+    disk:
+      name: mysql-data
+      mountPath: /var/lib/mysql
+      sizeGB: 10
+    envVars:
+      - key: MYSQL_DATABASE
+        value: techstore_pro
+      - key: MYSQL_USER
+        value: techstore
+      - key: MYSQL_PASSWORD
+        generateValue: true
+      - key: MYSQL_ROOT_PASSWORD
+        generateValue: true
+
+  - type: web
+    name: techstore-app
+    runtime: node
+    plan: 0.5c-512mb
+    buildCommand: cd backend && npm ci --include=dev && npm run prisma:generate
+    startCommand: cd backend && node src/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: FRONTEND_URL
+        value: https://andresclavs.github.io
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromService: { type: pserv, name: techstore-mysql, property: host }
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_NAME
+        value: techstore_pro
+      - key: DB_USER
+        value: techstore
+      - key: DB_PASSWORD
+        fromService: { type: pserv, name: techstore-mysql, envVarKey: MYSQL_PASSWORD }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: AUTO_SEED
+        value: "true"
+      - key: ADMIN_EMAIL
+        value: admin@techstore.local
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DEMO_USERS_PASSWORD
+        sync: false
+      - key: EMISOR_RUC
+        value: "9999999999001"

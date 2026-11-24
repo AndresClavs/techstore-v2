@@ -22,7 +22,8 @@ export async function transaction(work) {
     try {
       return await prisma.$transaction(work, {
         isolationLevel: "Serializable",
-        timeout: 15000,
+        timeout: Number(process.env.TX_TIMEOUT_MS) || 15000,
+        maxWait: 10000,
       });
     } catch (error) {
       if (attempt || error.code !== "P2034") throw error;
